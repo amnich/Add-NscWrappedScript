@@ -93,7 +93,7 @@ Function Add-NscWrappedScript {
                         Write-Error "$NscIniPath missing"
                     }
                     #if command is missing add it
-                    if (!(Select-String -Path $NscIniPath -pattern $CommandLine)) {
+                    if (!(Select-String -Path $NscIniPath -pattern ([regex]::Escape($CommandLine)))) {
                         #backup switch present then backup file as NSC_yyyyMMdd_HHmm.ini
                         if ($BackupIniFile) {
                             Copy-Item $NscIniPath $($nscinipath.Replace($NSCini, $NSCiniBackup)) -Force 
