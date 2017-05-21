@@ -70,6 +70,8 @@ VERBOSE:     Replace command in ini file
 VERBOSE:     Replace ";check_test_ps1=check_test.ps1 arg1 arg2" with "check_test_ps1=check_test.ps1 arg1 arg2"
 True
 
+.LINK
+https://github.com/amnich/Add-NscWrappedScript
 
 #>
 Function Add-NscWrappedScript {
