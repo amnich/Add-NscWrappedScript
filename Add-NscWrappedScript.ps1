@@ -101,11 +101,13 @@ Function Add-NscWrappedScript {
         $patternWS = "\[Wrapped Scripts\]"
         $NSCini = "nsc.ini"
         $NSCiniBackup = "nsc_$(get-date -Format "yyyyMMdd_HHmm")`.ini"
-        $ScriptBlock = {
-            
+		$VerboseSwitch = $PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent
+        $ScriptBlock = {            
             try {
                 if ($using:NscFolder) {
-                    $VerbosePreference = "continue"
+                    if ($using:VerboseSwitch){
+						$VerbosePreference = "continue"
+					}
                     Write-Verbose "Running remote on $env:computername"
                     $NscFolder = $using:NscFolder
                     $BackupIniFile = $using:BackupIniFile
