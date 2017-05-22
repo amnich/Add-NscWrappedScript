@@ -3,7 +3,7 @@
 Add new script to NSClient++
 
 .DESCRIPTION
-Add new script to NSClient++ script directory and create a new entry in nsc.ini file in [Wrapped Scripts].
+Add new script to NSClient++ script directory and create a new entry in nsc.ini or nsclient.ini file in Wrapped Scripts.
 
 .PARAMETER PathToScript
 Path to a script that will be copied to NSClient script directory. 
@@ -12,7 +12,7 @@ Path to a script that will be copied to NSClient script directory.
 Overwrite command in ini file. 
 
 .PARAMETER CommandLine
-Command that will be inserted into nsc.ini [Wrapped Scripts].
+Command that will be inserted into nsc.ini or nsclient.ini Wrapped Scripts.
 Like 
 check_test_bat=check_test.bat arg1 arg2
 check_test_vbs=check_test.vbs /arg1:1 /arg2:1 /variable:1
