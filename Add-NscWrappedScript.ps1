@@ -100,8 +100,8 @@ Function Add-NscWrappedScript {
             }
             Write-Debug "Script name $ScriptName"
         }        
-        $patternWS = "\[Wrapped Scripts\]"
-        $NSCini = "nsc.ini"
+        $patternWS = "[\[|[\/settings\/external scripts\/][w|W]rapped [s|S]cripts\]"
+        $NSCini = "nsc.ini", "nsclient.ini"
         $NSCiniBackup = "nsc_$(get-date -Format "yyyyMMdd_HHmm")`.ini"
 		$VerboseSwitch = $PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent
         $ScriptBlock = {            
@@ -130,10 +130,13 @@ Function Add-NscWrappedScript {
             Write-Debug "$($folders | out-string)"
             foreach ($folder in $Folders) {
                 try {                    
-                    $NscIniPath = "$($folder.FullName)\$NSCini"
+                    $NscIniPath = "$($folder.FullName)\$($NSCini[0])"
                     if (!(Test-Path $NscIniPath)) {
-                        Write-Error "$NscIniPath missing"
-                    }
+                        $NscIniPath = "$($folder.FullName)\$($NSCini[1])"
+                        if (!(Test-Path $NscIniPath)) {
+                            Write-Error "$NscIniPath missing"
+                        }
+                    }                    
                     #if command is missing add it
                     $CommandLineRegexEscaped = [regex]::Escape($($CommandLine -replace "^;"))
                     $testCommand = Select-String -Path $NscIniPath -pattern ($CommandLineRegexEscaped)
@@ -144,7 +147,7 @@ Function Add-NscWrappedScript {
                         }                       
                         #backup switch present then backup file as NSC_yyyyMMdd_HHmm.ini
                         if ($BackupIniFile) {
-                            Copy-Item $NscIniPath $($nscinipath.Replace($NSCini, $NSCiniBackup)) -Force 
+                            Copy-Item $NscIniPath $($nscinipath.Replace($(Split-Path $NscIniPath -Leaf), $NSCiniBackup)) -Force 
                             Write-Verbose "    NSC ini file backed up as $($nscinipath.Replace($NSCini,$NSCiniBackup))"
                         }
                         if ((Select-String -Path $NscIniPath -pattern ($CommandLineRegexEscaped))) {
@@ -172,8 +175,7 @@ Function Add-NscWrappedScript {
                         }   
                     }
                     else {
-                        Write-warning "    Command already present.`n$($testCommand.Line | out-string)`nUse -Force switch to overwrite."
-                        return $false
+                        Write-warning "    Command already present in $NscIniPath.`n$($testCommand.Line | out-string)`nUse -Force switch to overwrite."                        
                     }
                 }
                 catch {
