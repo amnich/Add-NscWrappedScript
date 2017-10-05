@@ -1,41 +1,31 @@
 <#
 .SYNOPSIS
 Add new script to NSClient++
-
 .DESCRIPTION
 Add new script to NSClient++ script directory and create a new entry in nsc.ini or nsclient.ini file in Wrapped Scripts.
-
 .PARAMETER PathToScript
 Path to a script that will be copied to NSClient script directory. 
-
 .PARAMETER Force
 Overwrite command in ini file. 
-
 .PARAMETER CommandLine
 Command that will be inserted into nsc.ini or nsclient.ini Wrapped Scripts.
 Like 
 check_test_bat=check_test.bat arg1 arg2
 check_test_vbs=check_test.vbs /arg1:1 /arg2:1 /variable:1
 check_test_ps1=check_test.ps1 arg1 arg2
-
 .PARAMETER BackupIniFile
 Backup nsc.ini file in same directory with current date and time.
 Like nsc_20170519_2125.ini
-
 .PARAMETER ComputerName
 Specifies the computers on which the command runs.
-
 .PARAMETER NscFolder
 Directory where NSClient++ is installed.
 Default is $env:ProgramFiles\NSClient*
-
 .PARAMETER ScriptName
 Save script under provided name.
 By default original script name will be used from PathToScript.
-
 .EXAMPLE
 Add-NscWrappedScript -ComputerName "PC1", "PC2" -PathToScript C:\temp\test.ps1 -CommandLine check_test=test.ps1 -BackupIniFile -Verbose
-
 VERBOSE: Running remote on PC1
 VERBOSE: Folders found 1
 VERBOSE:     Script test.ps1 saved in C:\Program Files\NSClient++\scripts\
@@ -48,31 +38,24 @@ VERBOSE:     Script test.ps1 saved in C:\Program Files\NSClient++\scripts\
 VERBOSE:     NSC ini file backed up as C:\Program Files\NSClient++\nsc_20170519_2220.ini
 VERBOSE:     New command inserted check_test=test.ps1
 True
-
 .EXAMPLE
 Add-NscWrappedScript -CommandLine "check_test_ps1=check_test.ps1 arg1 arg2" -PathToScript C:\temp\test.ps1 -ScriptName check_test.ps1 -Verbose
-
 VERBOSE: Running local
 VERBOSE: Folders found 1
 WARNING:     Command already present.
 check_test_ps1=check_test.ps1 arg1 arg2
-
 Use -Force switch to overwrite.
 False
-
 .EXAMPLE
 Add-NscWrappedScript -CommandLine "check_test_ps1=check_test.ps1 arg1 arg2" -PathToScript C:\temp\test.ps1 -ScriptName check_test.ps1 -Verbose -Force
-
 VERBOSE: Running local
 VERBOSE: Folders found 1
 VERBOSE:     Script check_test.ps1 saved in C:\Program Files\NSClient++-0.3.9-x64-\scripts\
 VERBOSE:     Replace command in ini file
 VERBOSE:     Replace ";check_test_ps1=check_test.ps1 arg1 arg2" with "check_test_ps1=check_test.ps1 arg1 arg2"
 True
-
 .LINK
 https://github.com/amnich/Add-NscWrappedScript
-
 #>
 Function Add-NscWrappedScript {
     param(
@@ -110,8 +93,8 @@ Function Add-NscWrappedScript {
                     if ($using:VerboseSwitch){
 						$VerbosePreference = "continue"
 					}
-                    Write-Verbose "Running remote on $env:computername"
-                    $NscFolder = $using:NscFolder
+                    Write-Verbose "Running remote on $env:computername"                     
+					$NscFolder = $using:NscFolder
                     $BackupIniFile = $using:BackupIniFile
                     $ScriptContent = $using:ScriptContent
                     $ScriptName = $using:ScriptName
@@ -119,6 +102,7 @@ Function Add-NscWrappedScript {
                     $NSCiniBackup = $using:NSCiniBackup
                     $patternWS = $using:patternWS
                     $CommandLine = $using:CommandLine
+					$force = $using:force
                 }
             }
             catch {
@@ -140,8 +124,10 @@ Function Add-NscWrappedScript {
                     #if command is missing add it
                     $CommandLineRegexEscaped = [regex]::Escape($($CommandLine -replace "^;"))
                     $testCommand = Select-String -Path $NscIniPath -pattern ($CommandLineRegexEscaped)
+					#Write-Verbose "Test command $testcommand"					
                     if (!($testCommand) -or $force) {
-                        if ($PathToScript) {
+						#Write-Verbose "Copy file"
+                        if ($ScriptContent) {
                             $ScriptContent | out-file  "$($folder.FullName)\scripts\$ScriptName" -Force
                             Write-Verbose "    Script $ScriptName saved in $($folder.FullName)\scripts\"
                         }                       
