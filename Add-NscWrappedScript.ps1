@@ -1,3 +1,4 @@
+Function Add-NscWrappedScript {
 <#
 .SYNOPSIS
 Add new script to NSClient++
@@ -6,7 +7,7 @@ Add new script to NSClient++ script directory and create a new entry in nsc.ini 
 .PARAMETER PathToScript
 Path to a script that will be copied to NSClient script directory. 
 .PARAMETER Force
-Overwrite command in ini file. 
+Overwrite command in ini file and copy file. 
 .PARAMETER CommandLine
 Command that will be inserted into nsc.ini or nsclient.ini Wrapped Scripts.
 Like 
@@ -20,10 +21,12 @@ Like nsc_20170519_2125.ini
 Specifies the computers on which the command runs.
 .PARAMETER NscFolder
 Directory where NSClient++ is installed.
-Default is $env:ProgramFiles\NSClient*
+Default is path from running service or $env:ProgramFiles\NSClient*
 .PARAMETER ScriptName
 Save script under provided name.
 By default original script name will be used from PathToScript.
+.PARAMETER RestartService
+Restart the NSClient++ service
 .EXAMPLE
 Add-NscWrappedScript -ComputerName "PC1", "PC2" -PathToScript C:\temp\test.ps1 -CommandLine check_test=test.ps1 -BackupIniFile -Verbose
 VERBOSE: Running remote on PC1
@@ -57,8 +60,11 @@ True
 .LINK
 https://github.com/amnich/Add-NscWrappedScript
 #>
-Function Add-NscWrappedScript {
+	[CmdletBinding()]
     param(
+		[parameter(ValueFromPipeline)]
+        [ValidateNotNullorEmpty()]
+        [String[]]$ComputerName,
         [parameter(Mandatory = $true)]
         [ValidateNotNullorEmpty()]
         $CommandLine,
@@ -67,12 +73,10 @@ Function Add-NscWrappedScript {
         [parameter()]
         [ValidateNotNullorEmpty()]
         $ScriptName,        
-        [switch]$BackupIniFile,
-        [parameter(ValueFromPipeline)]
-        [ValidateNotNullorEmpty()]
-        [String[]]$ComputerName,
-        $NscFolder = "$env:ProgramFiles\NSClient*",
-        [switch]$Force
+        [switch]$BackupIniFile,       
+        $NscFolder,
+        [switch]$Force,
+		[switch]$RestartService
     )
     BEGIN {
         if ($PathToScript) {
@@ -82,34 +86,50 @@ Function Add-NscWrappedScript {
                 $ScriptName = Split-Path $PathToScript -Leaf
             }
             Write-Debug "Script name $ScriptName"
-        }        
+        } 
+		else{
+			$ScriptContent = $null
+		}
         $patternWS = "[\[|[\/settings\/external scripts\/][w|W]rapped [s|S]cripts\]"
         $NSCini = "nsc.ini", "nsclient.ini"
         $NSCiniBackup = "nsc_$(get-date -Format "yyyyMMdd_HHmm")`.ini"
 		$VerboseSwitch = $PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent
         $ScriptBlock = {            
             try {
-                if ($using:NscFolder) {
+                if ($using:ComputerName) {
                     if ($using:VerboseSwitch){
+						$VerboseSwitch = $using:VerboseSwitch
 						$VerbosePreference = "continue"
 					}
                     Write-Verbose "Running remote on $env:computername"                     
 					$NscFolder = $using:NscFolder
                     $BackupIniFile = $using:BackupIniFile
-                    $ScriptContent = $using:ScriptContent
+                    $ScriptContent = $using:ScriptContent				
                     $ScriptName = $using:ScriptName
                     $NSCini = $using:NSCini
                     $NSCiniBackup = $using:NSCiniBackup
                     $patternWS = $using:patternWS
                     $CommandLine = $using:CommandLine
 					$force = $using:force
+					$RestartService = $using:RestartService
                 }
             }
             catch {
                 Write-Verbose "Running local"
             }
             #find NSC folder
-            $Folders = Get-ChildItem "$NSCFolder"
+			$NscFolder_regex = "[A-Z]:\\.*\\NSC.*\.exe"
+			$NscService = Get-WmiObject win32_service | ?{$_.DisplayName -like 'NSClient*' -and $_.state -eq "Running"}
+			if ($NscFolder -eq $null){
+				if (($NscService | select -ExpandProperty PathName) -match $NscFolder_regex) {
+						$NscFolder = Split-Path $Matches[0]
+						Write-Verbose "Found service $($NscService.name) and set path to $NscFolder"
+					}
+				else {
+					$NscFolder = "$env:ProgramFiles\NSClient*"
+				}
+			}
+            $Folders = Get-ChildItem "$NSCFolder*"
             Write-Verbose "Folders found $($folders.count)"
             Write-Debug "$($folders | out-string)"
             foreach ($folder in $Folders) {
@@ -137,7 +157,7 @@ Function Add-NscWrappedScript {
                             Write-Verbose "    NSC ini file backed up as $($nscinipath.Replace($NSCini,$NSCiniBackup))"
                         }
                         if ((Select-String -Path $NscIniPath -pattern ($CommandLineRegexEscaped))) {
-                            Write-Verbose "    Replace command in ini file"
+                            Write-Verbose "    Force switch: replace command in ini file."
                             (Get-Content $NscIniPath) | Foreach-Object {
                                 if ($_ -match $CommandLineRegexEscaped) {
                                     Write-Verbose "    Replace `"$_`" with `"$CommandLine`""
@@ -169,6 +189,17 @@ Function Add-NscWrappedScript {
                     return $false
                 }
             }
+			if ($RestartService -and $NscService){
+				$params = @{
+					Name = $NscService.Name				
+				}
+				if ($VerboseSwitch){
+					$params += @{
+						Verbose = $true
+					}
+				}
+				Restart-Service @params
+			}
             return $true
         }
     }
